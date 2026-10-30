@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan System - Canvas Vercel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> 
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .clip-url {
+            word-break: break-all;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 sm:p-8">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        <!-- HEADER -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900">Pengaturan System Cloud (Google Sheets)</h1>
+                <p class="text-xs sm:text-sm text-slate-500 mt-1">Perubahan menu, user, dan timeout akan disinkronkan ke seluruh PC secara otomatis.</p>
+            </div>
+            <button onclick="syncToCloud()" id="sync-btn" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow transition-all">
+                <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Simpan & Sinkronkan ke Cloud
+            </button>
+        </div>
+
+        <!-- TAB BUTTONS -->
+        <div class="flex space-x-2 border-b border-slate-200 overflow-x-auto">
+            <button onclick="switchTab('tab-menus')" id="btn-tab-menus" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-blue-600 text-blue-600 transition-all">Menu Navbar</button>
+            <button onclick="switchTab('tab-users')" id="btn-tab-users" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all">Pengguna & Role</button>
+            <button onclick="switchTab('tab-system')" id="btn-tab-system" class="py-2.5 px-4 font-semibold text-sm border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-all">Konfigurasi Timeout</button>
+        </div>
+
+        <!-- TAB MENUS -->
+        <div id="tab-menus" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Form Menu -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-circle-plus text-blue-600 mr-2"></i>Tambah Menu</h2>
+                <form id="menu-form" onsubmit="saveNewMenu(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tipe Menu</label>
+                        <select id="menu-type" onchange="toggleParentDropdown()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="single">Menu Utama (Single)</option>
+                            <option value="dropdown">Menu Utama (Dropdown)</option>
+                            <option value="sub">Sub-Menu (Anak Dropdown)</option>
+                        </select>
+                    </div>
+
+                    <div id="parent-container" class="hidden">
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pilih Induk Dropdown</label>
+                        <select id="menu-parent" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Label</label>
+                        <input type="text" id="menu-label" required placeholder="Contoh: Daily Report" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">URL / File HTML</label>
+                        <input type="text" id="menu-url" required placeholder="Contoh: https://example.com/dailyreport.html" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ikon FontAwesome</label>
+                        <input type="text" id="menu-icon" value="fa-solid fa-file-lines" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md">Tambah ke Daftar</button>
+                </form>
+            </div>
+
+            <!-- Tabel Menu Aktif -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                        <h2 class="text-base font-bold text-slate-800">Daftar Menu Aktif</h2>
+                        
+                        <!-- Search Bar + Clear Text -->
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="menu-search" oninput="handleMenuSearch()" placeholder="Cari menu / URL..." class="w-full pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="menu-search-clear" onclick="clearMenuSearch()" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-[11px] font-bold text-slate-400 uppercase bg-slate-50/50">
+                                    <th class="py-2.5 px-3">Label</th>
+                                    <th class="py-2.5 px-3">URL (Clipped)</th>
+                                    <th class="py-2.5 px-3">Tipe / Induk</th>
+                                    <th class="py-2.5 px-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="custom-menu-table" class="text-sm divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Controls Pagination Menu -->
+                <div class="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 pt-4 mt-6 gap-3">
+                    <div class="flex items-center space-x-2 text-xs text-slate-500">
+                        <span>Tampilkan:</span>
+                        <select id="menu-page-size" onchange="changeMenuPageSize(this.value)" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span id="menu-pagination-info">0 - 0 dari 0</span>
+                    </div>
+
+                    <div class="flex items-center space-x-1" id="menu-pagination-buttons">
+                        <!-- Tombol Pagination di-render dinamis -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB USERS -->
+        <div id="tab-users" class="grid grid-cols-1 lg:grid-cols-3 gap-6 hidden">
+            <!-- Form User -->
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-user-plus text-emerald-600 mr-2"></i>Tambah Pengguna</h2>
+                <form id="user-form" onsubmit="saveUser(event)" class="space-y-4">
+                    <input type="text" id="user-fullname" required placeholder="Nama Lengkap" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <input type="text" id="user-username" required placeholder="Username" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <input type="password" id="user-password" required placeholder="Password" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                    <select id="user-role" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <option value="user">User</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                    <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md">Tambah User</button>
+                </form>
+            </div>
+
+            <!-- Tabel Daftar Pengguna -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                        <h2 class="text-base font-bold text-slate-800">Daftar Pengguna</h2>
+                        
+                        <!-- Search Bar + Clear Text -->
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                            <input type="text" id="user-search" oninput="handleUserSearch()" placeholder="Cari nama, username, role..." class="w-full pl-8 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <button id="user-search-clear" onclick="clearUserSearch()" class="hidden absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 text-xs">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-[11px] font-bold text-slate-400 uppercase bg-slate-50/50">
+                                    <th class="py-2.5 px-3">Nama</th>
+                                    <th class="py-2.5 px-3">Username</th>
+                                    <th class="py-2.5 px-3">Role</th>
+                                    <th class="py-2.5 px-3 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-table" class="text-sm divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Controls Pagination User -->
+                <div class="flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 pt-4 mt-6 gap-3">
+                    <div class="flex items-center space-x-2 text-xs text-slate-500">
+                        <span>Tampilkan:</span>
+                        <select id="user-page-size" onchange="changeUserPageSize(this.value)" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 focus:outline-none">
+                            <option value="5">5</option>
+                            <option value="10" selected>10</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                        </select>
+                        <span id="user-pagination-info">0 - 0 dari 0</span>
+                    </div>
+
+                    <div class="flex items-center space-x-1" id="user-pagination-buttons">
+                        <!-- Tombol Pagination User di-render dinamis -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB SYSTEM -->
+        <div id="tab-system" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 max-w-xl hidden">
+            <h2 class="text-base font-bold text-slate-800 mb-4 flex items-center"><i class="fa-solid fa-clock text-blue-600 mr-2"></i>Pengaturan Timeout Sesi</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Batas Waktu Otomatis Keluar (Menit)</label>
+                    <input type="number" id="timeout-minutes-input" min="1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button onclick="saveTimeout()" class="py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-all shadow-md">Simpan Timeout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL AKSES -->
+    <div id="access-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <h3 class="font-bold text-slate-900">Atur Akses Menu: <span id="target-user-name" class="text-blue-600"></span></h3>
+            <div id="menu-checkbox-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+            <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100">
+                <button onclick="closeAccessModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-all">Batal</button>
+                <button onclick="saveUserPermissions()" class="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx-go4arE2j68TII4B9RlrVWXB8n8G85aF4AizLi7b7tLpPTdJHlukfxle8TzphC0sV/exec";
+        let currentEditingUserId = null;
+
+        // State Pagination & Search
+        let menuState = {
+            search: '',
+            page: 1,
+            pageSize: 10
+        };
+
+        let userState = {
+            search: '',
+            page: 1,
+            pageSize: 10
+        };
+
+        // Navigation Tab
+        function switchTab(id) {
+            ['tab-menus', 'tab-users', 'tab-system'].forEach(t => document.getElementById(t).classList.add('hidden'));
+            ['btn-tab-menus', 'btn-tab-users', 'btn-tab-system'].forEach(b => {
+                const btn = document.getElementById(b);
+                btn.classList.remove('border-blue-600', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-slate-500');
+            });
+
+            document.getElementById(id).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + id);
+            activeBtn.classList.remove('border-transparent', 'text-slate-500');
+            activeBtn.classList.add('border-blue-600', 'text-blue-600');
+        }
+
+        // Data Helpers
+        function getCustomMenus() { return JSON.parse(localStorage.getItem('custom_menus')) || []; }
+        function getUsers() { return JSON.parse(localStorage.getItem('system_users')) || []; }
+
+        function toggleParentDropdown() {
+            const type = document.getElementById('menu-type').value;
+            const container = document.getElementById('parent-container');
+            const parentSelect = document.getElementById('menu-parent');
+
+            if (type === 'sub') {
+                container.classList.remove('hidden');
+                const menus = getCustomMenus();
+                const dropdownMenus = menus.filter(m => m.type === 'dropdown');
+
+                if (dropdownMenus.length === 0) {
+                    parentSelect.innerHTML = `<option value="">-- Buat menu bertipe 'Dropdown' terlebih dahulu --</option>`;
+                } else {
+                    parentSelect.innerHTML = dropdownMenus.map(m => `<option value="${m.url}">${m.label} (${m.url})</option>`).join('');
+                }
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        async function syncToCloud() {
+            const btn = document.getElementById('sync-btn');
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i>Menyimpan...';
+            
+            const payload = {
+                type: "saveConfig",
+                custom_menus: getCustomMenus(),
+                system_users: getUsers(),
+                session_timeout_minutes: localStorage.getItem('session_timeout_minutes') || 15
+            };
+
+            try {
+                await fetch(SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                alert('Berhasil disinkronkan ke Google Sheets!');
+            } catch(e) {
+                alert('Gagal sinkronisasi jaringan.');
+            }
+            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i>Simpan & Sinkronkan ke Cloud';
+        }
+
+        // --- MANAJEMEN MENU ---
+        function saveNewMenu(e) {
+            e.preventDefault();
+            const type = document.getElementById('menu-type').value;
+            const label = document.getElementById('menu-label').value;
+            const url = document.getElementById('menu-url').value;
+            const icon = document.getElementById('menu-icon').value;
+            const parent = type === 'sub' ? document.getElementById('menu-parent').value : '';
+
+            if (type === 'sub' && !parent) {
+                alert('Silakan pilih induk dropdown terlebih dahulu!');
+                return;
+            }
+
+            let menus = getCustomMenus();
+            menus.push({ id: Date.now(), type, label, url, icon, parent });
+            localStorage.setItem('custom_menus', JSON.stringify(menus));
+            document.getElementById('menu-form').reset();
+            toggleParentDropdown();
+            renderMenuTable();
+        }
+
+        function deleteMenu(id) {
+            if (!confirm("Yakin ingin menghapus menu ini?")) return;
+            let menus = getCustomMenus().filter(m => m.id !== id);
+            localStorage.setItem('custom_menus', JSON.stringify(menus));
+            renderMenuTable();
+            toggleParentDropdown();
+        }
+
+        function handleMenuSearch() {
+            const val = document.getElementById('menu-search').value;
+            menuState.search = val.toLowerCase();
+            menuState.page = 1; 
+            document.getElementById('menu-search-clear').classList.toggle('hidden', val === '');
+            renderMenuTable();
+        }
+
+        function clearMenuSearch() {
+            document.getElementById('menu-search').value = '';
+            handleMenuSearch();
+        }
+
+        function changeMenuPageSize(size) {
+            menuState.pageSize = parseInt(size);
+            menuState.page = 1;
+            renderMenuTable();
+        }
+
+        function setMenuPage(p) {
+            menuState.page = p;
+            renderMenuTable();
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('URL telah disalin ke clipboard!');
+        }
+
+        function renderMenuTable() {
+            const allMenus = getCustomMenus();
+            const filtered = allMenus.filter(m => 
+                m.label.toLowerCase().includes(menuState.search) || 
+                m.url.toLowerCase().includes(menuState.search) ||
+                m.type.toLowerCase().includes(menuState.search) ||
+                (m.parent && m.parent.toLowerCase().includes(menuState.search))
+            );
+
+            const total = filtered.length;
+            const totalPages = Math.ceil(total / menuState.pageSize) || 1;
+            if (menuState.page > totalPages) menuState.page = totalPages;
+
+            const startIdx = (menuState.page - 1) * menuState.pageSize;
+            const endIdx = Math.min(startIdx + menuState.pageSize, total);
+            const paginated = filtered.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('custom-menu-table');
+            if (paginated.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400 text-xs">Menu tidak ditemukan.</td></tr>`;
+            } else {
+                tbody.innerHTML = paginated.map(m => `
+                    <tr class="hover:bg-slate-50/80 transition-all">
+                        <td class="py-2.5 px-3 font-semibold text-slate-800">
+                            <i class="${m.icon} text-blue-500 mr-2"></i>${m.label}
+                        </td>
+                        <td class="py-2.5 px-3 text-xs font-mono text-slate-600 max-w-xs">
+                            <div class="clip-url" title="${m.url}">${m.url}</div>
+                            <div class="mt-1 flex space-x-2">
+                                <button onclick="copyToClipboard('${m.url}')" class="text-[10px] text-blue-600 hover:underline">Salin</button>
+                                <a href="${m.url}" target="_blank" class="text-[10px] text-slate-400 hover:text-slate-600 hover:underline">Buka <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+                            </div>
+                        </td>
+                        <td class="py-2.5 px-3">
+                            <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium">
+                                ${m.type} ${m.parent ? '<span class="text-blue-600 font-bold">(' + m.parent + ')</span>' : ''}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center">
+                            <button onclick="deleteMenu(${m.id})" class="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-all" title="Hapus Menu">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Update Pagination Info & Navigation
+            document.getElementById('menu-pagination-info').innerText = total > 0 ? `${startIdx + 1} - ${endIdx} dari ${total}` : '0 - 0 dari 0';
+            renderPaginationBtns('menu-pagination-buttons', menuState.page, totalPages, 'setMenuPage');
+        }
+
+        // --- MANAJEMEN USER ---
+        function saveUser(e) {
+            e.preventDefault();
+            let users = getUsers();
+            users.push({ 
+                id: Date.now(), 
+                name: document.getElementById('user-fullname').value, 
+                username: document.getElementById('user-username').value, 
+                password: document.getElementById('user-password').value, 
+                role: document.getElementById('user-role').value, 
+                allowedMenus: ['*'] 
+            });
+            localStorage.setItem('system_users', JSON.stringify(users));
+            document.getElementById('user-form').reset();
+            renderUsersTable();
+        }
+
+        function deleteUser(id) {
+            if (!confirm("Yakin ingin menghapus pengguna ini?")) return;
+            let users = getUsers().filter(u => u.id !== id);
+            localStorage.setItem('system_users', JSON.stringify(users));
+            renderUsersTable();
+        }
+
+        function handleUserSearch() {
+            const val = document.getElementById('user-search').value;
+            userState.search = val.toLowerCase();
+            userState.page = 1;
+            document.getElementById('user-search-clear').classList.toggle('hidden', val === '');
+            renderUsersTable();
+        }
+
+        function clearUserSearch() {
+            document.getElementById('user-search').value = '';
+            handleUserSearch();
+        }
+
+        function changeUserPageSize(size) {
+            userState.pageSize = parseInt(size);
+            userState.page = 1;
+            renderUsersTable();
+        }
+
+        function setUserPage(p) {
+            userState.page = p;
+            renderUsersTable();
+        }
+
+        function renderUsersTable() {
+            const allUsers = getUsers();
+            const filtered = allUsers.filter(u => 
+                u.name.toLowerCase().includes(userState.search) || 
+                u.username.toLowerCase().includes(userState.search) ||
+                u.role.toLowerCase().includes(userState.search)
+            );
+
+            const total = filtered.length;
+            const totalPages = Math.ceil(total / userState.pageSize) || 1;
+            if (userState.page > totalPages) userState.page = totalPages;
+
+            const startIdx = (userState.page - 1) * userState.pageSize;
+            const endIdx = Math.min(startIdx + userState.pageSize, total);
+            const paginated = filtered.slice(startIdx, endIdx);
+
+            const tbody = document.getElementById('users-table');
+            if (paginated.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-slate-400 text-xs">Pengguna tidak ditemukan.</td></tr>`;
+            } else {
+                tbody.innerHTML = paginated.map(u => `
+                    <tr class="hover:bg-slate-50/80 transition-all">
+                        <td class="py-2.5 px-3 font-semibold text-slate-800">${u.name}</td>
+                        <td class="py-2.5 px-3 text-xs font-mono text-slate-500">${u.username}</td>
+                        <td class="py-2.5 px-3">
+                            <span class="px-2 py-1 ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'} rounded-lg text-xs font-semibold uppercase">
+                                ${u.role}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center">
+                            <button onclick="openAccessModal(${u.id})" class="text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-all mr-1" title="Atur Akses">
+                                <i class="fa-solid fa-user-lock"></i>
+                            </button>
+                            <button onclick="deleteUser(${u.id})" class="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-all" title="Hapus User">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            document.getElementById('user-pagination-info').innerText = total > 0 ? `${startIdx + 1} - ${endIdx} dari ${total}` : '0 - 0 dari 0';
+            renderPaginationBtns('user-pagination-buttons', userState.page, totalPages, 'setUserPage');
+        }
+
+        // Shared Pagination UI Renderer
+        function renderPaginationBtns(elementId, currentPage, totalPages, pageCallbackName) {
+            const container = document.getElementById(elementId);
+            let btnsHtml = '';
+
+            btnsHtml += `<button onclick="${pageCallbackName}(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"><i class="fa-solid fa-chevron-left"></i></button>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === currentPage) {
+                    btnsHtml += `<button class="px-2.5 py-1 text-xs rounded-lg bg-blue-600 text-white font-semibold">${i}</button>`;
+                } else if (i === 1 || i === totalPages || Math.abs(i - currentPage) <= 1) {
+                    btnsHtml += `<button onclick="${pageCallbackName}(${i})" class="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">${i}</button>`;
+                } else if (i === currentPage - 2 || i === currentPage + 2) {
+                    btnsHtml += `<span class="px-1 text-xs text-slate-400">...</span>`;
+                }
+            }
+
+            btnsHtml += `<button onclick="${pageCallbackName}(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"><i class="fa-solid fa-chevron-right"></i></button>`;
+
+            container.innerHTML = btnsHtml;
+        }
+
+        // Timeout Settings & Modals
+        function saveTimeout() {
+            localStorage.setItem('session_timeout_minutes', document.getElementById('timeout-minutes-input').value);
+            alert('Timeout berhasil disimpan!');
+        }
+
+        function openAccessModal(id) {
+            currentEditingUserId = id;
+            const user = getUsers().find(u => u.id === id);
+            document.getElementById('target-user-name').innerText = user.name;
+            document.getElementById('menu-checkbox-list').innerHTML = getCustomMenus().map(m => `
+                <label class="flex items-center space-x-2 text-xs p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
+                    <input type="checkbox" value="${m.url}" ${user.allowedMenus.includes(m.url)?'checked':''} class="perm-checkbox rounded text-blue-600">
+                    <span class="text-slate-700">${m.label} <span class="text-slate-400 text-[10px]">(${m.url})</span></span>
+                </label>
+            `).join('');
+            document.getElementById('access-modal').classList.remove('hidden');
+        }
+
+        function closeAccessModal() { 
+            document.getElementById('access-modal').classList.add('hidden'); 
+        }
+
+        function saveUserPermissions() {
+            let users = getUsers();
+            let idx = users.findIndex(u => u.id === currentEditingUserId);
+            if(idx !== -1) {
+                users[idx].allowedMenus = Array.from(document.querySelectorAll('.perm-checkbox:checked')).map(cb => cb.value);
+                localStorage.setItem('system_users', JSON.stringify(users));
+                closeAccessModal();
+                renderUsersTable();
+            }
+        }
+
+        window.onload = () => { 
+            renderMenuTable(); 
+            renderUsersTable(); 
+            toggleParentDropdown();
+            document.getElementById('timeout-minutes-input').value = localStorage.getItem('session_timeout_minutes') || 15; 
+        };
+    </script>
+</body>
+</html>
